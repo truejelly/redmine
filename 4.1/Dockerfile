@@ -117,7 +117,6 @@ RUN set -eux; \
 		cp Gemfile.lock "Gemfile.lock.${adapter}"; \
 	done; \
 	rm ./config/database.yml; \
-	rm ./config/configuration.yml; \
 # fix permissions for running as an arbitrary user
 	chmod -R ugo=rwX Gemfile.lock "$GEM_HOME"; \
 	rm -rf ~redmine/.bundle; \
