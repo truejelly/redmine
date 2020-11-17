@@ -47,93 +47,9 @@ fi
 
 if [ -n "$isLikelyRedmine" ]; then
 	_fix_permissions
-	if [ ! -f './config/database.yml' ]; then
-		file_env 'REDMINE_DB_MYSQL'
-		file_env 'REDMINE_DB_POSTGRES'
-		file_env 'REDMINE_DB_SQLSERVER'
-
-		if [ "$MYSQL_PORT_3306_TCP" ] && [ -z "$REDMINE_DB_MYSQL" ]; then
-			export REDMINE_DB_MYSQL='mysql'
-		elif [ "$POSTGRES_PORT_5432_TCP" ] && [ -z "$REDMINE_DB_POSTGRES" ]; then
-			export REDMINE_DB_POSTGRES='postgres'
-		fi
-
-		if [ "$REDMINE_DB_MYSQL" ]; then
-			adapter='mysql2'
-			host="$REDMINE_DB_MYSQL"
-			file_env 'REDMINE_DB_PORT' '3306'
-			file_env 'REDMINE_DB_USERNAME' "${MYSQL_ENV_MYSQL_USER:-root}"
-			file_env 'REDMINE_DB_PASSWORD' "${MYSQL_ENV_MYSQL_PASSWORD:-${MYSQL_ENV_MYSQL_ROOT_PASSWORD:-}}"
-			file_env 'REDMINE_DB_DATABASE' "${MYSQL_ENV_MYSQL_DATABASE:-${MYSQL_ENV_MYSQL_USER:-redmine}}"
-			file_env 'REDMINE_DB_ENCODING' ''
-		elif [ "$REDMINE_DB_POSTGRES" ]; then
-			adapter='postgresql'
-			host="$REDMINE_DB_POSTGRES"
-			file_env 'REDMINE_DB_PORT' '5432'
-			file_env 'REDMINE_DB_USERNAME' "${POSTGRES_ENV_POSTGRES_USER:-postgres}"
-			file_env 'REDMINE_DB_PASSWORD' "${POSTGRES_ENV_POSTGRES_PASSWORD}"
-			file_env 'REDMINE_DB_DATABASE' "${POSTGRES_ENV_POSTGRES_DB:-${REDMINE_DB_USERNAME:-}}"
-			file_env 'REDMINE_DB_ENCODING' 'utf8'
-		elif [ "$REDMINE_DB_SQLSERVER" ]; then
-			adapter='sqlserver'
-			host="$REDMINE_DB_SQLSERVER"
-			file_env 'REDMINE_DB_PORT' '1433'
-			file_env 'REDMINE_DB_USERNAME' ''
-			file_env 'REDMINE_DB_PASSWORD' ''
-			file_env 'REDMINE_DB_DATABASE' ''
-			file_env 'REDMINE_DB_ENCODING' ''
-		else
-			echo >&2
-			echo >&2 'warning: missing REDMINE_DB_MYSQL, REDMINE_DB_POSTGRES, or REDMINE_DB_SQLSERVER environment variables'
-			echo >&2
-			echo >&2 '*** Using sqlite3 as fallback. ***'
-			echo >&2
-
-			adapter='sqlite3'
-			host='localhost'
-			file_env 'REDMINE_DB_PORT' ''
-			file_env 'REDMINE_DB_USERNAME' 'redmine'
-			file_env 'REDMINE_DB_PASSWORD' ''
-			file_env 'REDMINE_DB_DATABASE' 'sqlite/redmine.db'
-			file_env 'REDMINE_DB_ENCODING' 'utf8'
-
-			mkdir -p "$(dirname "$REDMINE_DB_DATABASE")"
-			if [ "$(id -u)" = '0' ]; then
-				find "$(dirname "$REDMINE_DB_DATABASE")" \! -user redmine -exec chown redmine '{}' +
-			fi
-		fi
-
-		REDMINE_DB_ADAPTER="$adapter"
-		REDMINE_DB_HOST="$host"
-		echo "$RAILS_ENV:" > config/database.yml
-		for var in \
-			adapter \
-			host \
-			port \
-			username \
-			password \
-			database \
-			encoding \
-		; do
-			env="REDMINE_DB_${var^^}"
-			val="${!env}"
-			[ -n "$val" ] || continue
-			echo "  $var: \"$val\"" >> config/database.yml
-		done
-	else
-		# parse the database config to get the database adapter name
-		# so we can use the right Gemfile.lock
-		# (https://github.com/redmine/redmine/blob/dd24d5a004c6f0e137f0a3520d77ca3d704f1d66/Gemfile#L42-L71)
-		adapter="$(ruby -e "
-			require 'yaml'
-			require 'erb'
-			conf = YAML.load(ERB.new(File.read('./config/database.yml')).result)
-			puts conf[ENV['RAILS_ENV']]['adapter']
-		")"
-	fi
 
 	# ensure the right database adapter is active in the Gemfile.lock
-	cp "Gemfile.lock.${adapter}" Gemfile.lock
+	cp "Gemfile.lock.mysql2" Gemfile.lock
 	# install additional gems for Gemfile.local and plugins
 	bundle check || bundle install --without development test
 
